@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -157,12 +158,19 @@ def main():
                 send(chat_id, "Начал новый разговор — прежний контекст забыт.")
                 continue
 
-            tg("sendChatAction", chat_id=chat_id, action="typing")
-            status = tg("sendMessage", chat_id=chat_id, text="⏳ Работаю над задачей…")
-            answer, session_id = ask_claude(text, session_id)
-            sid = status.get("result", {}).get("message_id")
-            if sid:
-                tg("deleteMessage", chat_id=chat_id, message_id=sid)
+            # Пока Claude думает, держим в чате индикатор «печатает…»
+            done = threading.Event()
+
+            def typing(cid=chat_id):
+                while not done.is_set():
+                    tg("sendChatAction", chat_id=cid, action="typing")
+                    done.wait(5)
+
+            threading.Thread(target=typing, daemon=True).start()
+            try:
+                answer, session_id = ask_claude(text, session_id)
+            finally:
+                done.set()
             send(chat_id, answer)
 
 
