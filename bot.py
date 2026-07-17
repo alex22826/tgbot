@@ -12,6 +12,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -22,7 +23,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
 # Рабочая папка Claude: здесь он создаёт проекты и хранит свои сессии.
 WORKSPACE = os.path.normpath(os.path.join(BASE_DIR, "..", "botspace"))
-CLAUDE_EXE = os.path.expanduser(r"~\.local\bin\claude.exe")
+CLAUDE_EXE = (
+    shutil.which("claude")
+    or os.path.expanduser("~/.local/bin/claude.exe" if os.name == "nt" else "~/.local/bin/claude")
+)
 CLAUDE_TIMEOUT = 1800  # сек на одну задачу (сайт + пуш может быть долгим)
 
 HELP = (
@@ -90,10 +94,14 @@ def ask_claude(prompt, session_id):
     ]
     if session_id:
         cmd += ["--resume", session_id]
+    env = dict(os.environ)
+    # На сервере Claude работает по API-ключу из .env; на ПК — по подписке.
+    if ENV.get("ANTHROPIC_API_KEY"):
+        env["ANTHROPIC_API_KEY"] = ENV["ANTHROPIC_API_KEY"]
     try:
         res = subprocess.run(
             cmd, cwd=WORKSPACE, capture_output=True, stdin=subprocess.DEVNULL,
-            encoding="utf-8", errors="replace", timeout=CLAUDE_TIMEOUT,
+            encoding="utf-8", errors="replace", timeout=CLAUDE_TIMEOUT, env=env,
         )
     except subprocess.TimeoutExpired:
         return "Задача не уложилась в лимит времени и была прервана.", session_id
