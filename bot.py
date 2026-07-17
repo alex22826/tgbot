@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Телеграм-мост к Claude Code.
-
-Принимает сообщения в Telegram и передаёт их локальному Claude Code CLI,
-который умеет всё то же, что и в терминале: создавать репозитории, писать
-код, пушить на GitHub, искать в интернете (погода, пробки) и т.д.
-
-Работает только с одним владельцем: бот привязывается к первому написавшему
-ему пользователю (или к OWNER_ID из .env) и игнорирует всех остальных.
-"""
 
 import json
 import os
@@ -22,13 +12,12 @@ import urllib.request
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
-# Рабочая папка Claude: здесь он создаёт проекты и хранит свои сессии.
 WORKSPACE = os.path.normpath(os.path.join(BASE_DIR, "..", "botspace"))
 CLAUDE_EXE = (
     shutil.which("claude")
     or os.path.expanduser("~/.local/bin/claude.exe" if os.name == "nt" else "~/.local/bin/claude")
 )
-CLAUDE_TIMEOUT = 1800  # сек на одну задачу (сайт + пуш может быть долгим)
+CLAUDE_TIMEOUT = 1800
 
 HELP = (
     "Привет! Я мост к Claude Code на твоём компьютере.\n\n"
@@ -79,14 +68,12 @@ def tg(method, **params):
 
 
 def send(chat_id, text):
-    """Отправляет текст, режет на куски по лимиту Telegram (4096)."""
     text = text.strip() or "(пустой ответ)"
     for i in range(0, len(text), 4000):
         tg("sendMessage", chat_id=chat_id, text=text[i:i + 4000])
 
 
 def ask_claude(prompt, session_id):
-    """Передаёт запрос Claude Code CLI, возвращает (ответ, session_id)."""
     os.makedirs(WORKSPACE, exist_ok=True)
     cmd = [
         CLAUDE_EXE, "-p", prompt,
@@ -96,8 +83,6 @@ def ask_claude(prompt, session_id):
     if session_id:
         cmd += ["--resume", session_id]
     env = dict(os.environ)
-    # На сервере Claude работает по API-ключу или токену подписки (claude
-    # setup-token) из .env; на ПК — по обычной авторизации Claude Code.
     for var in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"):
         val = ENV.get(var, "")
         if val and not val.startswith("PASTE"):
@@ -140,7 +125,6 @@ def main():
             if not chat_id or not text:
                 continue
 
-            # Привязка к владельцу: первый написавший — хозяин, остальные мимо.
             if owner is None:
                 owner = user_id
                 ENV["OWNER_ID"] = str(owner)
@@ -158,7 +142,6 @@ def main():
                 send(chat_id, "Начал новый разговор — прежний контекст забыт.")
                 continue
 
-            # Пока Claude думает, держим в чате индикатор «печатает…»
             done = threading.Event()
 
             def typing(cid=chat_id):

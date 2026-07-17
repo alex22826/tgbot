@@ -1,6 +1,4 @@
-﻿# Вставка секретов бота на сервер Beget по SSH.
-# Токены вводятся здесь и уходят сразу на сервер — в чат их слать не нужно.
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $key = "$env:USERPROFILE\.ssh\beget_bot"
 $srv = "root@45.146.167.152"
 $envfile = "/home/bot/tgbot/.env"
