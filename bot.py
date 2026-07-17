@@ -96,8 +96,9 @@ def ask_claude(prompt, session_id):
         cmd += ["--resume", session_id]
     env = dict(os.environ)
     # На сервере Claude работает по API-ключу из .env; на ПК — по подписке.
-    if ENV.get("ANTHROPIC_API_KEY"):
-        env["ANTHROPIC_API_KEY"] = ENV["ANTHROPIC_API_KEY"]
+    api_key = ENV.get("ANTHROPIC_API_KEY", "")
+    if api_key and not api_key.startswith("PASTE"):
+        env["ANTHROPIC_API_KEY"] = api_key
     try:
         res = subprocess.run(
             cmd, cwd=WORKSPACE, capture_output=True, stdin=subprocess.DEVNULL,
