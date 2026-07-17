@@ -95,10 +95,12 @@ def ask_claude(prompt, session_id):
     if session_id:
         cmd += ["--resume", session_id]
     env = dict(os.environ)
-    # На сервере Claude работает по API-ключу из .env; на ПК — по подписке.
-    api_key = ENV.get("ANTHROPIC_API_KEY", "")
-    if api_key and not api_key.startswith("PASTE"):
-        env["ANTHROPIC_API_KEY"] = api_key
+    # На сервере Claude работает по API-ключу или токену подписки (claude
+    # setup-token) из .env; на ПК — по обычной авторизации Claude Code.
+    for var in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"):
+        val = ENV.get(var, "")
+        if val and not val.startswith("PASTE"):
+            env[var] = val
     try:
         res = subprocess.run(
             cmd, cwd=WORKSPACE, capture_output=True, stdin=subprocess.DEVNULL,
